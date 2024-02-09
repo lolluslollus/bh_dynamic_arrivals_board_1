@@ -12,7 +12,6 @@ local _texts = {
     arrivalsAllCaps = _('ArrivalsAllCaps'),
     companyNamePrefix1 = _('CompanyNamePrefix1'),
     departuresAllCaps = _('DeparturesAllCaps'),
-    destination = _('Destination'),
     due = _('Due'),
     from = _('From'),
     fromSpace = _('FromSpace'),
