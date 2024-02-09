@@ -179,7 +179,7 @@ Another big thank you goes out to badgerrhax for the idea.
             ["StationPickerWindowTitle"] = "Scegli una stazione",
             ["Time"] = "Ora",
             ["TimeDisplay"] = "Formato dell'ora",
-            ["To"] = "A",
+            ["To"] = "Destinazione",
             ["WarningWindowTitle"] = "Attenzione",
             ["Yes"] = "Sì",
         },
