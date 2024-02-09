@@ -18,7 +18,6 @@ local _texts = {
     fromSpace = _('FromSpace'),
     lineName = '', -- let's leave it empty
     minutesShort = _('MinutesShort'),
-    origin = _('Origin'),
     platform = _('PlatformShort'),
     sorryNoService = _('SorryNoService'),
     sorryTrouble = _('SorryTrouble'),
@@ -181,9 +180,7 @@ local utils = {
                 logger.warn('cannot find posisions of stations in a multistation group')
                 return nil, nil
             else
-                local stationId = stationIds[terminalParamValue]
-                -- if not(stationId) then stationId = arrayUtils.getLast(stationIds) end
-                return nil, stationId
+                return nil, stationIds[terminalParamValue]
             end
         end
 
@@ -193,12 +190,28 @@ local utils = {
         return terminalParamValue, nil
     end,
 }
-utils.getFormattedPredictions = function(maxEntries, allRawPredictions, gameTime_msec, stationIdIfAny, terminalIdIfAny)
-    logger.print('getFormattedPredictions starting, allRawPredictions =') logger.debugPrint(allRawPredictions)
+---comment
+---@param config {singleTerminal: boolean, clock: boolean, isArrivals: boolean, maxEntries: integer, track: boolean, paramPrefix: string}
+---@param allRawPredictions table<{arrivalTime_msec: integer, departureTime_msec: integer, destinationStationGroupId: integer, lineName: string, originStationGroupId: integer, stationId: integer, terminalId: integer}>
+---@param gameTime_msec integer
+---@param stationIdIfAny integer|nil
+---@param terminalIdIfAny integer|nil
+---@return table<{arrivalTerminal: integer, arrivalTimeString: string, departureTimeString: string, destinationString: string, etaMinutesString: string, etdMinutesString: string, lineName: string, originString: string}>
+utils.getFormattedPredictions = function(config, allRawPredictions, gameTime_msec, stationIdIfAny, terminalIdIfAny, stationGroupId)
+    if logger.isExtendedLog() then
+        local stationGroupName = api.engine.getComponent(stationGroupId, api.type.ComponentType.NAME)
+        if stationGroupName ~= nil then
+            logger.print('getFormattedPredictions starting, stationGroup ' .. tostring(stationGroupId) .. ' has name =', tostring(stationGroupName.name))
+            -- 99808 Moneglia Centrale
+        end        logger.print('getFormattedPredictions starting, stationIdIfAny = ' .. tostring(stationIdIfAny) .. ', terminalIdIfAny = ' .. tostring(terminalIdIfAny))
+        logger.print('getFormattedPredictions starting, config =') logger.debugPrint(config)
+        logger.print('getFormattedPredictions starting, allRawPredictions =') logger.debugPrint(allRawPredictions)
+    end
 
     local results = {}
 
-    if allRawPredictions then
+    if allRawPredictions ~= nil then
+        local maxEntries = config.maxEntries
         local culledRawPredictions = {}
 
         for _, pre in ipairs(allRawPredictions) do
@@ -209,7 +222,11 @@ utils.getFormattedPredictions = function(maxEntries, allRawPredictions, gameTime
             end
         end
 
-        table.sort(culledRawPredictions, function(a, b) return a.arrivalTime_msec < b.arrivalTime_msec end)
+        if config.isArrivals then
+            table.sort(culledRawPredictions, function(a, b) return a.arrivalTime_msec < b.arrivalTime_msec end)
+        else
+            table.sort(culledRawPredictions, function(a, b) return a.departureTime_msec < b.departureTime_msec end)
+        end
 
         for i = #culledRawPredictions, 1, -1 do
             if i > maxEntries then
@@ -278,7 +295,7 @@ utils.getFormattedPredictions = function(maxEntries, allRawPredictions, gameTime
             results[#results+1] = fmtPred
         end
     end
-    while #results < 1 do
+    if #results < 1 then
         results[#results+1] = {
             lineName = '-',
             originString = _texts.sorryNoService,
@@ -722,6 +739,14 @@ local function getNextPredictions(stationGroupId, stationGroup, nEntries, gameTi
 
     if not(stationGroupId) or not(stationGroup) or not(stationGroup.stations) or not(nEntries) or nEntries < 1 then return predictions end
 
+    if logger.isExtendedLog() then
+        local stationGroupName = api.engine.getComponent(stationGroupId, api.type.ComponentType.NAME)
+        if stationGroupName ~= nil then
+            logger.print('stationGroup ' .. tostring(stationGroupId) .. ' has name =', tostring(stationGroupName.name))
+            -- 99808 Moneglia Centrale
+        end
+    end
+
     local predictionsBuffer = predictionsBufferHelpers.get(stationGroupId)
     if predictionsBuffer then
         logger.print('game time msec = ', gameTime_msec, 'using buffer for stationGroupId =', stationGroupId)
@@ -1097,7 +1122,7 @@ local function tryUpgradeState(state)
                             for _, stationId in pairs(stationCon.stations) do
                                 if edgeUtils.isValidAndExistingId(stationId) then
                                     local station = api.engine.getComponent(stationId, api.type.ComponentType.STATION)
-                                    if station then
+                                    if station ~= nil then
                                         local stationGroupId = api.engine.system.stationGroupSystem.getStationGroup(stationId)
                                         if edgeUtils.isValidAndExistingId(stationGroupId) then
                                             stationGroupIdsIndexed[stationGroupId] = {
@@ -1166,8 +1191,7 @@ local updateSigns = function(state, gameTime_msec)
                 local formattedPredictions = {}
                 local config = constructionConfigs.get()[signCon.fileName]
                 local stationName = nil
-                -- LOLLO NOTE config.maxEntries is tied to the construction type,
-                -- and we buffer:
+                -- LOLLO NOTE config.maxEntries is tied to the construction type, and we buffer:
                 -- make sure sign configs with the same singleTerminal have the same maxEntries
                 if (config.maxEntries or 0) > 0 then
                     if not(signState) or not(edgeUtils.isValidAndExistingId(signState.stationGroupId)) then
@@ -1187,10 +1211,6 @@ local updateSigns = function(state, gameTime_msec)
                             local stationIds = stationGroup.stations
                             local function _getParamName(subfix) return config.paramPrefix .. subfix end
 
-                            -- the player may have changed the terminal in the construction params
-                            local chosenTerminalId, chosenStationId = utils.getTerminalAndStationId(config, signCon, signState, _getParamName, stationIds)
-                            logger.print('chosenTerminalId =', chosenTerminalId, 'chosenStationId =', chosenStationId)
-
                             local rawPredictions = nil
                             local nextPredictions = getNextPredictions(
                                 signState.stationGroupId,
@@ -1209,7 +1229,11 @@ local updateSigns = function(state, gameTime_msec)
                                 arrayUtils.concatValues(rawPredictions, nextPredictions)
                             end
 
-                            formattedPredictions = utils.getFormattedPredictions(config.maxEntries, rawPredictions or {}, gameTime_msec, chosenStationId, chosenTerminalId)
+                            -- the player may have changed the terminal in the construction params
+                            local chosenTerminalId, chosenStationId = utils.getTerminalAndStationId(config, signCon, signState, _getParamName, stationIds)
+                            logger.print('chosenTerminalId =', chosenTerminalId, 'chosenStationId =', chosenStationId)
+
+                            formattedPredictions = utils.getFormattedPredictions(config, rawPredictions or {}, gameTime_msec, chosenStationId, chosenTerminalId, signState.stationGroupId)
                             stationName = utils.getStationName(chosenStationId, signState.stationGroupId)
                         end
                     end
