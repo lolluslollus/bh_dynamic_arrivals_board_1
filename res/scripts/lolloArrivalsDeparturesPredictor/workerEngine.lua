@@ -14,7 +14,6 @@ local _texts = {
     departuresAllCaps = _('DeparturesAllCaps'),
     due = _('Due'),
     from = _('From'),
-    fromSpace = _('FromSpace'),
     lineName = '', -- let's leave it empty
     minutesShort = _('MinutesShort'),
     platform = _('PlatformShort'),
@@ -271,7 +270,6 @@ utils.getFormattedPredictions = function(config, allRawPredictions, gameTime_mse
                 if edgeUtils.isValidAndExistingId(rawPred.originStationGroupId) then
                     local originStationGroupName = api.engine.getComponent(rawPred.originStationGroupId, api.type.ComponentType.NAME)
                     if originStationGroupName and originStationGroupName.name then
-                        -- fmtEntry.originString = _texts.fromSpace .. originStationGroupName.name
                         fmtPred.originString = originStationGroupName.name
                         -- sanitize away the characters that we use in the regex in the model
                         fmtPred.originString:gsub('_', ' ')
