@@ -997,7 +997,7 @@ local function getNextPredictions(stationGroupId, stationGroup, nEntries, gameTi
                                                 -- nextStationGroupId = line.stops[nextIndex].stationGroup,
                                                 arrivalTime_msec = lastDepartureTime_msec + remainingTimeToPrecedingStop_msec + myLineData.averages[hereIndex].st_msec,
                                                 departureTime_msec = lastDepartureTime_msec + remainingTimeToPrecedingStop_msec + myLineData.averages[hereIndex].lsd_msec,
-                                                lineName = myLineData.name,
+                                                lineName = myLineData.name, -- LOLLO TODO try vehicle name over line name
                                             }
 
                                             logger.print('myLineData.period_msec =', myLineData.period_msec)
@@ -1010,7 +1010,7 @@ local function getNextPredictions(stationGroupId, stationGroup, nEntries, gameTi
                                                     -- nextStationGroupId = line.stops[nextIndex].stationGroup,
                                                     arrivalTime_msec = predictions[#predictions].arrivalTime_msec + myLineData.period_msec,
                                                     departureTime_msec = predictions[#predictions].departureTime_msec + myLineData.period_msec,
-                                                    lineName = myLineData.name,
+                                                    lineName = myLineData.name, -- LOLLO TODO try vehicle name over line name
                                                 }
                                             end
                                         end
